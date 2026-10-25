@@ -5,15 +5,28 @@
     "version": "1.0.0",
     "description": "API para consultar y actualizar perfiles de empleados. Los perfiles se crean automáticamente al consumir empleado.creado y se sincronizan/archivan al consumir empleado.actualizado/empleado.retirado."
   },
-  "servers": [{ "url": "/", "description": "Servidor actual" }],
+  "servers": [
+    {
+      "url": "/",
+      "description": "Servidor actual"
+    }
+  ],
   "tags": [
-    { "name": "Health", "description": "Estado operativo del microservicio" },
-    { "name": "Perfiles", "description": "Consulta y actualización de perfiles de empleados" }
+    {
+      "name": "Health",
+      "description": "Estado operativo del microservicio"
+    },
+    {
+      "name": "Perfiles",
+      "description": "Consulta y actualización de perfiles de empleados"
+    }
   ],
   "paths": {
     "/health": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Consultar el estado del servicio",
         "operationId": "getHealth",
         "responses": {
@@ -21,8 +34,16 @@
             "description": "El proceso está activo.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/HealthResponse" },
-                "example": { "success": true, "message": "Servicio disponible", "data": { "status": "UP" } }
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Servicio disponible",
+                  "data": {
+                    "status": "UP"
+                  }
+                }
               }
             }
           }
@@ -31,23 +52,33 @@
     },
     "/perfiles": {
       "get": {
-        "tags": ["Perfiles"],
+        "tags": [
+          "Perfiles"
+        ],
         "summary": "Listar todos los perfiles",
         "operationId": "listProfiles",
         "responses": {
           "200": {
             "description": "Perfiles consultados correctamente.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ProfileListResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileListResponse"
+                }
+              }
             }
           },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
         }
       }
     },
     "/perfiles/{empleadoId}": {
       "get": {
-        "tags": ["Perfiles"],
+        "tags": [
+          "Perfiles"
+        ],
         "summary": "Consultar el perfil de un empleado",
         "operationId": "getProfile",
         "parameters": [
@@ -55,34 +86,53 @@
             "name": "empleadoId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "example": "E001"
           }
         ],
         "responses": {
           "200": {
             "description": "Perfil encontrado.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProfileResponse" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
           },
           "404": {
             "description": "El perfil solicitado no existe.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
                 "example": {
                   "success": false,
                   "message": "El perfil del empleado E999 no existe",
                   "data": null,
-                  "error": { "code": "PROFILE_NOT_FOUND", "status": 404, "path": "/perfiles/E999", "timestamp": "2026-02-10T12:00:00.000Z" }
+                  "error": {
+                    "code": "PROFILE_NOT_FOUND",
+                    "status": 404,
+                    "path": "/perfiles/E999",
+                    "timestamp": "2026-02-10T12:00:00.000Z"
+                  }
                 }
               }
             }
           },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
         }
       },
       "put": {
-        "tags": ["Perfiles"],
+        "tags": [
+          "Perfiles"
+        ],
         "summary": "Actualizar el perfil de un empleado",
         "description": "Actualización parcial: un campo ausente conserva su valor actual. id, empleadoId, nombre, email, archivado y fechaCreacion no se modifican por este endpoint.",
         "operationId": "updateProfile",
@@ -91,18 +141,32 @@
             "name": "empleadoId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "example": "E001"
           }
         ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateProfileRequest" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
             "description": "Perfil actualizado correctamente.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProfileResponse" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
           },
           "400": {
             "description": "JSON inválido, campo no soportado, o límite de longitud excedido.",
@@ -110,8 +174,12 @@
               "application/json": {
                 "schema": {
                   "oneOf": [
-                    { "$ref": "#/components/schemas/ErrorResponse" },
-                    { "$ref": "#/components/schemas/ValidationErrorResponse" }
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
                   ]
                 }
               }
@@ -119,9 +187,17 @@
           },
           "404": {
             "description": "El perfil solicitado no existe.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
         }
       }
     }
@@ -131,83 +207,205 @@
       "Health": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["status"],
-        "properties": { "status": { "type": "string", "enum": ["UP"] } }
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "UP"
+            ]
+          }
+        }
       },
       "HealthResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["success", "message", "data"],
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
         "properties": {
-          "success": { "type": "boolean", "const": true },
-          "message": { "type": "string", "example": "Servicio disponible" },
-          "data": { "$ref": "#/components/schemas/Health" }
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Servicio disponible"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Health"
+          }
         }
       },
       "Profile": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "empleadoId", "nombre", "email", "telefono", "direccion", "ciudad", "biografia", "archivado", "fechaCreacion"],
+        "required": [
+          "id",
+          "empleadoId",
+          "nombre",
+          "email",
+          "telefono",
+          "direccion",
+          "ciudad",
+          "biografia",
+          "archivado",
+          "fechaCreacion"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "empleadoId": { "type": "string", "example": "E001" },
-          "nombre": { "type": "string", "example": "Juan" },
-          "email": { "type": "string", "format": "email" },
-          "telefono": { "type": "string", "maxLength": 30 },
-          "direccion": { "type": "string", "maxLength": 255 },
-          "ciudad": { "type": "string", "maxLength": 100 },
-          "biografia": { "type": "string" },
-          "archivado": { "type": "boolean", "description": "true si el empleado fue retirado (empleado.retirado). El perfil nunca se borra." },
-          "fechaCreacion": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "string"
+          },
+          "empleadoId": {
+            "type": "string",
+            "example": "E001"
+          },
+          "nombre": {
+            "type": "string",
+            "example": "Juan"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "telefono": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "direccion": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "ciudad": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "biografia": {
+            "type": "string"
+          },
+          "archivado": {
+            "type": "boolean",
+            "description": "true si el empleado fue retirado (empleado.retirado). El perfil nunca se borra."
+          },
+          "fechaCreacion": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ProfileResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["success", "message", "data"],
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
         "properties": {
-          "success": { "type": "boolean", "const": true },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/Profile" }
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Profile"
+          }
         }
       },
       "ProfileListResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["success", "message", "data"],
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
         "properties": {
-          "success": { "type": "boolean", "const": true },
-          "message": { "type": "string" },
-          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Profile" } }
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Profile"
+            }
+          }
         }
       },
       "UpdateProfileRequest": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "telefono": { "type": "string", "maxLength": 30 },
-          "direccion": { "type": "string", "maxLength": 255 },
-          "ciudad": { "type": "string", "maxLength": 100 },
-          "biografia": { "type": "string" }
+          "telefono": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "direccion": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "ciudad": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "biografia": {
+            "type": "string"
+          }
         }
       },
       "ErrorResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["success", "message", "data", "error"],
+        "required": [
+          "success",
+          "message",
+          "data",
+          "error"
+        ],
         "properties": {
-          "success": { "type": "boolean", "const": false },
-          "message": { "type": "string" },
-          "data": { "type": "null" },
+          "success": {
+            "type": "boolean",
+            "const": false
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "null"
+          },
           "error": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["code", "status", "path", "timestamp"],
+            "required": [
+              "code",
+              "status",
+              "path",
+              "timestamp"
+            ],
             "properties": {
-              "code": { "type": "string" },
-              "status": { "type": "integer" },
-              "path": { "type": "string" },
-              "timestamp": { "type": "string", "format": "date-time" }
+              "code": {
+                "type": "string"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              }
             }
           }
         }
@@ -215,29 +413,70 @@
       "ValidationErrorResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["success", "message", "data", "error"],
+        "required": [
+          "success",
+          "message",
+          "data",
+          "error"
+        ],
         "properties": {
-          "success": { "type": "boolean", "const": false },
-          "message": { "type": "string", "example": "Datos de entrada inválidos" },
-          "data": { "type": "null" },
+          "success": {
+            "type": "boolean",
+            "const": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Datos de entrada inválidos"
+          },
+          "data": {
+            "type": "null"
+          },
           "error": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["code", "status", "path", "timestamp", "details"],
+            "required": [
+              "code",
+              "status",
+              "path",
+              "timestamp",
+              "details"
+            ],
             "properties": {
-              "code": { "type": "string", "enum": ["VALIDATION_ERROR"] },
-              "status": { "type": "integer", "example": 400 },
-              "path": { "type": "string" },
-              "timestamp": { "type": "string", "format": "date-time" },
+              "code": {
+                "type": "string",
+                "enum": [
+                  "VALIDATION_ERROR"
+                ]
+              },
+              "status": {
+                "type": "integer",
+                "example": 400
+              },
+              "path": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
               "details": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": ["field", "message"],
+                  "required": [
+                    "field",
+                    "message"
+                  ],
                   "properties": {
-                    "field": { "type": "string", "example": "telefono" },
-                    "message": { "type": "string", "example": "telefono no puede superar 30 caracteres" }
+                    "field": {
+                      "type": "string",
+                      "example": "telefono"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "telefono no puede superar 30 caracteres"
+                    }
                   }
                 }
               }
@@ -251,16 +490,36 @@
         "description": "Error no controlado en el servidor.",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
             "example": {
               "success": false,
               "message": "Error interno del servidor",
               "data": null,
-              "error": { "code": "INTERNAL_ERROR", "status": 500, "path": "/perfiles", "timestamp": "2026-02-10T12:00:00.000Z" }
+              "error": {
+                "code": "INTERNAL_ERROR",
+                "status": 500,
+                "path": "/perfiles",
+                "timestamp": "2026-02-10T12:00:00.000Z"
+              }
             }
           }
         }
       }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token obtenido en POST /auth/login a través del API Gateway. Pulse Authorize y pegue el valor de accessToken."
+      }
     }
-  }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
 }

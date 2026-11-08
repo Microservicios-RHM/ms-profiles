@@ -21,7 +21,7 @@ pipeline {
           go test ./internal/application ./internal/infrastructure/http -covermode=atomic -coverprofile=reports/coverage.out
           test_status=$?
           go install github.com/jstemmer/go-junit-report/v2@v2.1.0
-          go test ./internal/application ./internal/infrastructure/http 2>&1 | "$(go env GOPATH)/bin/go-junit-report" > reports/junit.xml
+          go test -v ./internal/application ./internal/infrastructure/http 2>&1 | "$(go env GOPATH)/bin/go-junit-report" > reports/junit.xml
           sh scripts/check-coverage.sh || test_status=1
           exit "$test_status"
         '''

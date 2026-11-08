@@ -8,10 +8,12 @@ pipeline {
     stage('Checkout') { steps { checkout scm; script { env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()}" } } }
     stage('Build') {
       agent { docker { image 'golang:1.26-alpine'; reuseNode true } }
+      environment { HOME = '/tmp'; GOPATH = '/tmp/go'; GOCACHE = '/tmp/go-build' }
       steps { sh 'go mod download'; sh 'go vet ./...'; sh 'go build ./cmd/...' }
     }
     stage('Test') {
       agent { docker { image 'golang:1.26-alpine'; reuseNode true } }
+      environment { HOME = '/tmp'; GOPATH = '/tmp/go'; GOCACHE = '/tmp/go-build' }
       steps { sh 'go mod download'; sh 'mkdir -p reports && go test ./... -covermode=atomic -coverprofile=reports/coverage.out && sh scripts/check-coverage.sh'; sh 'go install github.com/jstemmer/go-junit-report/v2@v2.1.0'; sh 'go test ./... | "$(go env GOPATH)/bin/go-junit-report" > reports/junit.xml' }
       post { always { junit testResults: 'reports/junit.xml', allowEmptyResults: false; archiveArtifacts artifacts: 'reports/coverage.out', allowEmptyArchive: false } }
     }

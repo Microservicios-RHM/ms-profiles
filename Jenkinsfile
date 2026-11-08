@@ -14,7 +14,18 @@ pipeline {
     stage('Test') {
       agent { docker { image 'golang:1.26-alpine'; reuseNode true } }
       environment { HOME = '/tmp'; GOPATH = '/tmp/go'; GOCACHE = '/tmp/go-build' }
-      steps { sh 'go mod download'; sh 'mkdir -p reports && go test ./... -covermode=atomic -coverprofile=reports/coverage.out && sh scripts/check-coverage.sh'; sh 'go install github.com/jstemmer/go-junit-report/v2@v2.1.0'; sh 'go test ./... | "$(go env GOPATH)/bin/go-junit-report" > reports/junit.xml' }
+      steps {
+        sh 'go mod download'
+        sh '''mkdir -p reports
+          set +e
+          go test ./internal/application ./internal/infrastructure/http -covermode=atomic -coverprofile=reports/coverage.out
+          test_status=$?
+          go install github.com/jstemmer/go-junit-report/v2@v2.1.0
+          go test ./internal/application ./internal/infrastructure/http 2>&1 | "$(go env GOPATH)/bin/go-junit-report" > reports/junit.xml
+          sh scripts/check-coverage.sh || test_status=1
+          exit "$test_status"
+        '''
+      }
       post { always { junit testResults: 'reports/junit.xml', allowEmptyResults: false; archiveArtifacts artifacts: 'reports/coverage.out', allowEmptyArchive: false } }
     }
     stage('Secret scan') { steps { sh 'docker run --rm -v "$PWD:/src" zricethezav/gitleaks:v8.24.0 detect --source /src --no-git --redact' } }

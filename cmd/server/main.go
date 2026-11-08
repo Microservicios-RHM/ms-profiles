@@ -89,7 +89,16 @@ func main() {
 	}
 	defer consumer.Close()
 
-	mux := httpapi.NewRouter(getProfile, updateProfile, listProfiles)
+	mux := httpapi.NewRouter(getProfile, updateProfile, listProfiles, func(requestContext context.Context) map[string]string {
+		checks := map[string]string{"database": "DOWN", "broker": "DOWN"}
+		if pool.Ping(requestContext) == nil {
+			checks["database"] = "UP"
+		}
+		if consumer.Healthy() {
+			checks["broker"] = "UP"
+		}
+		return checks
+	})
 	handler := httpapi.RequestLogger(logger)(mux)
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", settings.Port),

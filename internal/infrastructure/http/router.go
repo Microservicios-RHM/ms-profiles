@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	_ "embed"
 	"log/slog"
 	"net/http"
@@ -19,10 +20,11 @@ func NewRouter(
 	getProfile *application.GetProfile,
 	updateProfile *application.UpdateProfile,
 	listProfiles *application.ListProfiles,
+	healthCheck func(context.Context) map[string]string,
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("GET /health", healthHandler(healthCheck))
 	mux.HandleFunc("GET /metrics", metricsHandler)
 	// Montadas bajo /perfiles (no en la raíz) para poder vivir detrás del API Gateway sin
 	// reescritura de rutas: el Gateway ya proxea /perfiles/* preservando la ruta. El ServeMux de
@@ -39,8 +41,22 @@ func NewRouter(
 	return mux
 }
 
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	writeSuccess(w, http.StatusOK, "Servicio disponible", map[string]string{"status": "UP"})
+func healthHandler(check func(context.Context) map[string]string) http.HandlerFunc {
+	return func(w http.ResponseWriter, request *http.Request) {
+		checks := check(request.Context())
+		status := "UP"
+		for _, value := range checks {
+			if value != "UP" {
+				status = "DOWN"
+				break
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if status == "DOWN" {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+		_, _ = w.Write([]byte(`{"status":"` + status + `","service":"perfiles-service","checks":{"database":"` + checks["database"] + `","broker":"` + checks["broker"] + `"}}`))
+	}
 }
 
 func metricsHandler(w http.ResponseWriter, _ *http.Request) {

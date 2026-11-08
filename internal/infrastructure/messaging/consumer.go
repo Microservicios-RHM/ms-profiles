@@ -134,3 +134,7 @@ func (c *Consumer) Close() {
 		_ = c.conn.Close()
 	}
 }
+
+func (c *Consumer) Healthy() bool {
+	return c.conn != nil && !c.conn.IsClosed() && c.channel != nil
+}

@@ -15,7 +15,9 @@ import (
 	httpapi "github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/http"
 	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/logging"
 	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/messaging"
+	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/observability"
 	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/persistence"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func main() {
@@ -25,6 +27,12 @@ func main() {
 		os.Exit(1)
 	}
 	logger := logging.NewLogger(settings.LogLevel)
+	shutdownTelemetry, err := observability.Configure(context.Background())
+	if err != nil {
+		logger.Error("OpenTelemetry initialization failed", "err", err.Error())
+		os.Exit(1)
+	}
+	defer shutdownTelemetry(context.Background())
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -85,7 +93,7 @@ func main() {
 	handler := httpapi.RequestLogger(logger)(mux)
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", settings.Port),
-		Handler: handler,
+		Handler: otelhttp.NewHandler(handler, "perfiles-service.http"),
 	}
 
 	go func() {

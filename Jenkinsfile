@@ -5,9 +5,13 @@ pipeline {
   environment { SERVICE = 'ms-profiles'; IMAGE = 'rhm/ms-profiles' }
   stages {
     stage('Checkout') { steps { checkout scm; script { env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()}" } } }
-    stage('Build and test') {
+    stage('Build') {
       agent { docker { image 'golang:1.26-alpine'; reuseNode true } }
-      steps { sh 'go mod download'; sh 'go vet ./...'; sh 'make test-ci'; sh 'go build ./cmd/...' }
+      steps { sh 'go mod download'; sh 'go vet ./...'; sh 'go build ./cmd/...' }
+    }
+    stage('Test') {
+      agent { docker { image 'golang:1.26-alpine'; reuseNode true } }
+      steps { sh 'go mod download'; sh 'make test-ci' }
     }
     stage('Secret scan') { steps { sh 'docker run --rm -v "$PWD:/src" zricethezav/gitleaks:v8.24.0 detect --source /src --no-git --redact' } }
     stage('SonarQube') {

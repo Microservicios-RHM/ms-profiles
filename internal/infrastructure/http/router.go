@@ -23,6 +23,7 @@ func NewRouter(
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("GET /metrics", metricsHandler)
 	// Montadas bajo /perfiles (no en la raíz) para poder vivir detrás del API Gateway sin
 	// reescritura de rutas: el Gateway ya proxea /perfiles/* preservando la ruta. El ServeMux de
 	// Go 1.22+ prioriza el patrón literal más específico sobre {empleadoId}, así que no colisiona
@@ -40,6 +41,11 @@ func NewRouter(
 
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	writeSuccess(w, http.StatusOK, "Servicio disponible", map[string]string{"status": "UP"})
+}
+
+func metricsHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+	_, _ = w.Write([]byte("# HELP rhm_profiles_service_info Static service identity metric\n# TYPE rhm_profiles_service_info gauge\nrhm_profiles_service_info{service=\"perfiles-service\"} 1\n"))
 }
 
 func openAPIHandler(w http.ResponseWriter, _ *http.Request) {

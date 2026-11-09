@@ -5,7 +5,7 @@ pipeline {
   triggers { pollSCM('H/5 * * * *') }
   environment { SERVICE = 'ms-profiles'; COMPOSE_SERVICE = 'perfiles-service'; IMAGE = 'rhm/ms-profiles' }
   stages {
-    stage('Checkout') { steps { checkout scm; script { env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()}" } } }
+    stage('Checkout') { steps { deleteDir(); checkout scm; script { env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()}" } } }
     stage('Secret scan') { steps { sh 'docker run --rm --volumes-from "$HOSTNAME" zricethezav/gitleaks:v8.24.0 detect --source "$PWD" --no-git --redact' } }
     stage('Build') {
       agent { docker { image 'golang:1.26-alpine'; reuseNode true } }

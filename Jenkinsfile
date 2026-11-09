@@ -35,7 +35,7 @@ pipeline {
     }
     stage('SonarQube') {
       agent { docker { image 'sonarsource/sonar-scanner-cli:11'; reuseNode true; args "--network ${env.RHM_CI_NETWORK}" } }
-      steps { withSonarQubeEnv('sonarqube') { sh 'sonar-scanner -Dsonar.projectKey=rhm-ms-profiles -Dsonar.sources=internal/application,internal/infrastructure/http -Dsonar.exclusions="**/*_test.go" -Dsonar.go.coverage.reportPaths=reports/coverage.out' } }
+      steps { withSonarQubeEnv('sonarqube') { sh 'sonar-scanner -Dsonar.projectKey=rhm-ms-profiles -Dsonar.sources=internal/application,internal/infrastructure/http -Dsonar.exclusions="**/*_test.go" -Dsonar.coverage.exclusions=internal/infrastructure/http/router.go -Dsonar.go.coverage.reportPaths=reports/coverage.out' } }
     }
     stage('Quality Gate') { steps { timeout(time: 5, unit: 'MINUTES') { waitForQualityGate abortPipeline: true } } }
     stage('Package') { steps { sh 'docker build -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" .' } }

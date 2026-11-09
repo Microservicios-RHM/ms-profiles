@@ -56,13 +56,15 @@ func (c *Consumer) Start(ctx context.Context) error {
 		if err == nil {
 			break
 		}
-		c.logger.Warn("RabbitMQ connection attempt failed", "attempt", attempt, "error", err.Error())
+		// El error de la librería puede incluir la URI AMQP completa; no se registra para evitar
+		// exponer usuario y contraseña.
+		c.logger.Warn("RabbitMQ connection attempt failed", "attempt", attempt)
 		if attempt < c.connectMaxAttempts {
 			time.Sleep(c.connectRetryDelay * time.Duration(attempt))
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("no fue posible conectar a RabbitMQ: %w", err)
+		return fmt.Errorf("no fue posible conectar a RabbitMQ")
 	}
 
 	c.channel, err = c.conn.Channel()

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -30,7 +31,13 @@ type Settings struct {
 }
 
 func (s Settings) DatabaseDSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s", s.DBUser, s.DBPassword, s.DBHost, s.DBPort, s.DBName)
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(s.DBUser, s.DBPassword),
+		Host:   fmt.Sprintf("%s:%d", s.DBHost, s.DBPort),
+		Path:   s.DBName,
+	}
+	return u.String()
 }
 
 func Load() (Settings, error) {

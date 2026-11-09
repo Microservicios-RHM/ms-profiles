@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -30,12 +31,23 @@ type Settings struct {
 }
 
 func (s Settings) DatabaseDSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s", s.DBUser, s.DBPassword, s.DBHost, s.DBPort, s.DBName)
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(s.DBUser, s.DBPassword),
+		Host:   fmt.Sprintf("%s:%d", s.DBHost, s.DBPort),
+		Path:   s.DBName,
+	}
+	return u.String()
 }
 
 func Load() (Settings, error) {
 	if _, err := os.Stat(".env"); err == nil {
 		_ = godotenv.Load()
+	}
+	for _, key := range []string{"DB_PASSWORD", "BROKER_URL"} {
+		if err := loadFileValue(key); err != nil {
+			return Settings{}, err
+		}
 	}
 
 	required := []string{"DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD", "BROKER_URL"}
@@ -73,6 +85,18 @@ func Load() (Settings, error) {
 		BrokerConnectMaxAttempts:  envInt("BROKER_CONNECT_MAX_ATTEMPTS", 5),
 		BrokerConnectRetryDelayMs: envInt("BROKER_CONNECT_RETRY_DELAY_MS", 1000),
 	}, nil
+}
+
+func loadFileValue(key string) error {
+	if os.Getenv(key) != "" || os.Getenv(key+"_FILE") == "" {
+		return nil
+	}
+	value, err := os.ReadFile(os.Getenv(key + "_FILE"))
+	if err != nil {
+		return fmt.Errorf("no fue posible leer %s_FILE: %w", key, err)
+	}
+	os.Setenv(key, strings.TrimSpace(string(value)))
+	return nil
 }
 
 func envString(key, fallback string) string {

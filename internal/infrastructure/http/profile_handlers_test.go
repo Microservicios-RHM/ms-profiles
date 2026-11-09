@@ -63,6 +63,7 @@ func buildTestRouter(repo *fakeRepository) http.Handler {
 		application.NewGetProfile(repo),
 		application.NewUpdateProfile(repo),
 		application.NewListProfiles(repo),
+		func(context.Context) map[string]string { return map[string]string{"database": "UP"} },
 	)
 }
 

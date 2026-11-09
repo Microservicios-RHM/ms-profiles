@@ -29,12 +29,20 @@ pipeline {
       post { always { junit testResults: 'reports/junit.xml', allowEmptyResults: false; archiveArtifacts artifacts: 'reports/coverage.out', allowEmptyArchive: false } }
     }
     stage('Secret scan') { steps { sh 'docker run --rm -v "$PWD:/src" zricethezav/gitleaks:v8.24.0 detect --source /src --no-git --redact' } }
+    stage('Dependency scan') {
+      steps { sh 'mkdir -p reports/security; docker run --rm -v "$PWD:/src" aquasec/trivy:0.76.2 fs --scanners vuln --severity HIGH,CRITICAL --exit-code 0 --format json --output /src/reports/security/dependencies.json /src; docker run --rm -v "$PWD:/src" aquasec/trivy:0.76.2 fs --scanners vuln --severity CRITICAL --exit-code 1 --no-progress /src' }
+      post { always { archiveArtifacts artifacts: 'reports/security/dependencies.json', allowEmptyArchive: false } }
+    }
     stage('SonarQube') {
       agent { docker { image 'sonarsource/sonar-scanner-cli:11'; reuseNode true; args "--network ${env.RHM_CI_NETWORK}" } }
       steps { withSonarQubeEnv('sonarqube') { sh 'sonar-scanner -Dsonar.projectKey=rhm-ms-profiles -Dsonar.sources=internal/application,internal/infrastructure/http -Dsonar.exclusions="**/*_test.go" -Dsonar.go.coverage.reportPaths=reports/coverage.out' } }
     }
     stage('Quality Gate') { steps { timeout(time: 5, unit: 'MINUTES') { waitForQualityGate abortPipeline: true } } }
     stage('Package') { steps { sh 'docker build -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" .' } }
+    stage('Image scan') {
+      steps { sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/src" aquasec/trivy:0.76.2 image --severity HIGH,CRITICAL --exit-code 0 --format json --output /src/reports/security/image.json "$IMAGE:$IMAGE_TAG"; docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.76.2 image --severity CRITICAL --exit-code 1 --no-progress "$IMAGE:$IMAGE_TAG"' }
+      post { always { archiveArtifacts artifacts: 'reports/security/image.json', allowEmptyArchive: false } }
+    }
     stage('Publish') { steps { sh 'docker tag "$IMAGE:$IMAGE_TAG" "$RHM_REGISTRY/$IMAGE:$IMAGE_TAG"; docker tag "$IMAGE:latest" "$RHM_REGISTRY/$IMAGE:latest"; docker push "$RHM_REGISTRY/$IMAGE:$IMAGE_TAG"; docker push "$RHM_REGISTRY/$IMAGE:latest"' } }
     stage('E2E Tests') {
       when { expression { params.RUN_E2E } }

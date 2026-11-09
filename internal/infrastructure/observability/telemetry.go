@@ -14,7 +14,7 @@ import (
 func Configure(ctx context.Context) (func(context.Context) error, error) {
 	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
 	if endpoint == "" {
-		endpoint = "http://jaeger:4318/v1/traces"
+		endpoint = "https://jaeger:4318/v1/traces"
 	}
 	exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(endpoint))
 	if err != nil {

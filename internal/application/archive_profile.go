@@ -27,17 +27,17 @@ func (uc *ArchiveProfile) Handle(ctx context.Context, envelope messaging.EventEn
 		return err
 	}
 	if !wasNew {
-		uc.logger.Info("duplicate event ignored", "eventId", envelope.ID, "eventType", envelope.Type)
+		uc.logger.InfoContext(ctx, "duplicate event ignored", "eventId", envelope.ID, "eventType", envelope.Type)
 		return nil
 	}
 	if !found {
-		uc.logger.Warn(
+		uc.logger.WarnContext(ctx,
 			"profile not found for empleado.retirado; nothing archived",
 			"eventId", envelope.ID, "empleadoId", empleadoID,
 		)
 		return nil
 	}
 
-	uc.logger.Info("profile archived", "eventId", envelope.ID, "empleadoId", empleadoID)
+	uc.logger.InfoContext(ctx, "profile archived", "eventId", envelope.ID, "empleadoId", empleadoID)
 	return nil
 }

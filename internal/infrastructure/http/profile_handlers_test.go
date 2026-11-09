@@ -11,6 +11,7 @@ import (
 
 	"github.com/Microservicios-RHM/ms-profiles/internal/application"
 	"github.com/Microservicios-RHM/ms-profiles/internal/domain"
+	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/observability"
 )
 
 type fakeRepository struct {
@@ -63,6 +64,8 @@ func buildTestRouter(repo *fakeRepository) http.Handler {
 		application.NewGetProfile(repo),
 		application.NewUpdateProfile(repo),
 		application.NewListProfiles(repo),
+		map[string]observability.Check{"database": func(context.Context) error { return nil }},
+		observability.NewMetrics("perfiles-service"),
 	)
 }
 
@@ -207,6 +210,13 @@ func TestHealthHandler(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var report observability.HealthReport
+	if err := json.Unmarshal(rec.Body.Bytes(), &report); err != nil {
+		t.Fatalf("health no es JSON válido: %v", err)
+	}
+	if report.Status != "UP" || report.Service != "perfiles-service" || report.Checks["database"] != "UP" {
+		t.Errorf("health = %+v", report)
 	}
 }
 

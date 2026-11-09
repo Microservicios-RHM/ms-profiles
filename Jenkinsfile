@@ -6,6 +6,7 @@ pipeline {
   environment { SERVICE = 'ms-profiles'; COMPOSE_SERVICE = 'perfiles-service'; IMAGE = 'rhm/ms-profiles' }
   stages {
     stage('Checkout') { steps { checkout scm; script { env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()}" } } }
+    stage('Secret scan') { steps { sh 'docker run --rm --volumes-from "$HOSTNAME" zricethezav/gitleaks:v8.24.0 detect --source "$PWD" --no-git --redact' } }
     stage('Build') {
       agent { docker { image 'golang:1.26-alpine'; reuseNode true } }
       environment { HOME = '/tmp'; GOPATH = '/tmp/go'; GOCACHE = '/tmp/go-build' }
@@ -28,7 +29,6 @@ pipeline {
       }
       post { always { junit testResults: 'reports/junit.xml', allowEmptyResults: false; archiveArtifacts artifacts: 'reports/coverage.out', allowEmptyArchive: false } }
     }
-    stage('Secret scan') { steps { sh 'docker run --rm --volumes-from "$HOSTNAME" zricethezav/gitleaks:v8.24.0 detect --source "$PWD" --no-git --redact' } }
     stage('Dependency scan') {
       steps { sh 'mkdir -p reports/security; docker run --rm --volumes-from "$HOSTNAME" -v "trivy-cache-$SERVICE:/root/.cache/trivy" aquasec/trivy:0.76.2 fs --scanners vuln --severity HIGH,CRITICAL --exit-code 0 --format json --output "$PWD/reports/security/dependencies.json" "$PWD"; docker run --rm --volumes-from "$HOSTNAME" -v "trivy-cache-$SERVICE:/root/.cache/trivy" aquasec/trivy:0.76.2 fs --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress "$PWD"' }
       post { always { archiveArtifacts artifacts: 'reports/security/dependencies.json', allowEmptyArchive: false } }

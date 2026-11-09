@@ -13,7 +13,7 @@ func NewLogger(level string) *slog.Logger {
 		Level:       parseLevel(level),
 		ReplaceAttr: replaceAttr,
 	})
-	return slog.New(handler).With("service", "perfiles-service")
+	return slog.New(handler).With("service", "perfiles-service", "context", map[string]any{}, "traceId", nil)
 }
 
 func parseLevel(level string) slog.Level {
@@ -32,7 +32,9 @@ func parseLevel(level string) slog.Level {
 func replaceAttr(_ []string, a slog.Attr) slog.Attr {
 	switch a.Key {
 	case slog.MessageKey:
-		a.Key = "msg"
+		a.Key = "message"
+	case slog.TimeKey:
+		a.Key = "timestamp"
 	case slog.LevelKey:
 		a.Key = "level"
 		a.Value = slog.StringValue(strings.ToLower(a.Value.String()))

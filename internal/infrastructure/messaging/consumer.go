@@ -7,7 +7,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/observability"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Handler procesa un evento ya parseado. Un error indica que el mensaje debe descartarse (no
@@ -97,7 +101,14 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 	go func() {
 		for delivery := range deliveries {
-			c.dispatch(ctx, delivery)
+			carrier := propagation.MapCarrier{}
+			for key, value := range delivery.Headers {
+				carrier[key] = fmt.Sprint(value)
+			}
+			parent := otel.GetTextMapPropagator().Extract(ctx, carrier)
+			spanCtx, span := otel.Tracer("perfiles-service").Start(parent, "consume "+delivery.RoutingKey, trace.WithSpanKind(trace.SpanKindConsumer))
+			c.dispatch(spanCtx, delivery)
+			span.End()
 		}
 	}()
 
@@ -107,10 +118,12 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 func (c *Consumer) dispatch(ctx context.Context, delivery amqp.Delivery) {
 	if err := c.route(ctx, delivery.RoutingKey, delivery.Body); err != nil {
+		observability.ObserveEvent(delivery.RoutingKey, "failed")
 		c.logger.Error("event discarded", "routingKey", delivery.RoutingKey, "error", err.Error())
 		_ = delivery.Nack(false, false)
 		return
 	}
+	observability.ObserveEvent(delivery.RoutingKey, "processed")
 	_ = delivery.Ack(false)
 }
 

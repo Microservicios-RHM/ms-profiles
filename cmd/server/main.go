@@ -15,7 +15,9 @@ import (
 	httpapi "github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/http"
 	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/logging"
 	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/messaging"
+	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/observability"
 	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/persistence"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func main() {
@@ -28,6 +30,18 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// Reto 8: OpenTelemetry (Zipkin + W3C Trace Context) antes de abrir conexiones.
+	shutdownTracing, err := observability.SetupTracing(ctx)
+	if err != nil {
+		logger.Error("perfiles-service failed to start", "err", err.Error())
+		os.Exit(1)
+	}
+	defer func() {
+		flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = shutdownTracing(flushCtx)
+	}()
 
 	logger.Info("Connecting to PostgreSQL", "host", settings.DBHost, "database", settings.DBName)
 	pool, err := persistence.NewPool(
@@ -81,8 +95,26 @@ func main() {
 	}
 	defer consumer.Close()
 
-	mux := httpapi.NewRouter(getProfile, updateProfile, listProfiles)
-	handler := httpapi.RequestLogger(logger)(mux)
+	healthChecks := map[string]observability.Check{
+		"database": pool.Ping,
+		"messageBroker": func(context.Context) error {
+			if !consumer.IsConnected() {
+				return errors.New("RabbitMQ connection closed")
+			}
+			return nil
+		},
+	}
+	metrics := observability.NewMetrics(observability.ServiceName())
+	mux := httpapi.NewRouter(getProfile, updateProfile, listProfiles, healthChecks, metrics)
+	// Orden de afuera hacia adentro: otelhttp crea el span de servidor (continuando el traceparent
+	// del Gateway) → el access log ya tiene traceId → las métricas leen r.Pattern tras el mux.
+	handler := otelhttp.NewHandler(
+		httpapi.RequestLogger(logger)(metrics.Middleware(mux)),
+		observability.ServiceName(),
+		otelhttp.WithFilter(func(r *http.Request) bool {
+			return r.URL.Path != "/health" && r.URL.Path != "/metrics"
+		}),
+	)
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", settings.Port),
 		Handler: handler,

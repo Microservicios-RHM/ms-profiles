@@ -8,7 +8,14 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer = otel.Tracer("rhm-messaging")
 
 // Handler procesa un evento ya parseado. Un error indica que el mensaje debe descartarse (no
 // reintentar) — igual que aio-pika en ms-notifications, la deduplicación aguas abajo (en el
@@ -104,12 +111,49 @@ func (c *Consumer) Start(ctx context.Context) error {
 }
 
 func (c *Consumer) dispatch(ctx context.Context, delivery amqp.Delivery) {
+	ctx, span := c.startConsumeSpan(ctx, delivery.RoutingKey, delivery.Headers)
+	defer span.End()
+
 	if err := c.route(ctx, delivery.RoutingKey, delivery.Body); err != nil {
-		c.logger.Error("event discarded", "routingKey", delivery.RoutingKey, "error", err.Error())
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		c.logger.ErrorContext(ctx, "event discarded", "routingKey", delivery.RoutingKey, "error", err.Error())
 		_ = delivery.Nack(false, false)
 		return
 	}
 	_ = delivery.Ack(false)
+}
+
+// startConsumeSpan continúa la traza del productor (Reto 8). No existe instrumentación oficial de
+// OpenTelemetry para amqp091-go, así que la propagación es manual: el `traceparent` (W3C Trace
+// Context) que empleados-service dejó en las cabeceras del mensaje se extrae y el span CONSUMER
+// cuelga del span PRODUCER. Sin esto, la creación del perfil aparecería en Zipkin como una traza
+// suelta, separada del alta del empleado que la provocó.
+func (c *Consumer) startConsumeSpan(ctx context.Context, routingKey string, headers amqp.Table) (context.Context, trace.Span) {
+	carrier := propagation.MapCarrier{}
+	for key, value := range headers {
+		switch v := value.(type) {
+		case string:
+			carrier[key] = v
+		case []byte:
+			carrier[key] = string(v)
+		}
+	}
+	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+	return tracer.Start(ctx, routingKey+" process",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(
+			attribute.String("messaging.system", "rabbitmq"),
+			attribute.String("messaging.operation.type", "process"),
+			attribute.String("messaging.destination.name", c.queueName),
+			attribute.String("messaging.rabbitmq.destination.routing_key", routingKey),
+		),
+	)
+}
+
+// IsConnected se usa en GET /health (check messageBroker).
+func (c *Consumer) IsConnected() bool {
+	return c.conn != nil && !c.conn.IsClosed()
 }
 
 // route contiene la lógica pura (parseo + despacho), separada de amqp.Delivery para poder

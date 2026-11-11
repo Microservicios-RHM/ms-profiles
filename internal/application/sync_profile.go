@@ -30,17 +30,17 @@ func (uc *SyncProfile) Handle(ctx context.Context, envelope messaging.EventEnvel
 		return err
 	}
 	if !wasNew {
-		uc.logger.Info("duplicate event ignored", "eventId", envelope.ID, "eventType", envelope.Type)
+		uc.logger.InfoContext(ctx, "duplicate event ignored", "eventId", envelope.ID, "eventType", envelope.Type)
 		return nil
 	}
 	if !found {
-		uc.logger.Warn(
+		uc.logger.WarnContext(ctx,
 			"profile not found for empleado.actualizado; nothing synced",
 			"eventId", envelope.ID, "empleadoId", empleadoID,
 		)
 		return nil
 	}
 
-	uc.logger.Info("profile synced", "eventId", envelope.ID, "empleadoId", empleadoID)
+	uc.logger.InfoContext(ctx, "profile synced", "eventId", envelope.ID, "empleadoId", empleadoID)
 	return nil
 }

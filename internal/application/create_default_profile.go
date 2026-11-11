@@ -37,11 +37,11 @@ func (uc *CreateDefaultProfile) Handle(ctx context.Context, envelope messaging.E
 		return err
 	}
 	if !created {
-		uc.logger.Info("duplicate event ignored", "eventId", envelope.ID, "eventType", envelope.Type)
+		uc.logger.InfoContext(ctx, "duplicate event ignored", "eventId", envelope.ID, "eventType", envelope.Type)
 		return nil
 	}
 
-	uc.logger.Info(
+	uc.logger.InfoContext(ctx,
 		"default profile created",
 		"eventId", envelope.ID,
 		"empleadoId", profile.EmpleadoID,

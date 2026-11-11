@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Microservicios-RHM/ms-profiles/internal/application"
+	"github.com/Microservicios-RHM/ms-profiles/internal/infrastructure/observability"
 )
 
 //go:embed openapi.json
@@ -19,10 +20,14 @@ func NewRouter(
 	getProfile *application.GetProfile,
 	updateProfile *application.UpdateProfile,
 	listProfiles *application.ListProfiles,
+	healthChecks map[string]observability.Check,
+	metrics *observability.Metrics,
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /health", healthHandler)
+	// Reto 8: health check con verificación real de dependencias y métricas Prometheus.
+	mux.HandleFunc("GET /health", observability.HealthHandler(observability.ServiceName(), healthChecks))
+	mux.Handle("GET /metrics", metrics.Handler())
 	// Montadas bajo /perfiles (no en la raíz) para poder vivir detrás del API Gateway sin
 	// reescritura de rutas: el Gateway ya proxea /perfiles/* preservando la ruta. El ServeMux de
 	// Go 1.22+ prioriza el patrón literal más específico sobre {empleadoId}, así que no colisiona
@@ -36,10 +41,6 @@ func NewRouter(
 	mux.HandleFunc("PUT /perfiles/{empleadoId}", updateProfileHandler(updateProfile))
 
 	return mux
-}
-
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	writeSuccess(w, http.StatusOK, "Servicio disponible", map[string]string{"status": "UP"})
 }
 
 func openAPIHandler(w http.ResponseWriter, _ *http.Request) {
@@ -57,13 +58,13 @@ func swaggerUIHandler(w http.ResponseWriter, _ *http.Request) {
 func RequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/health" {
+			if r.URL.Path == "/health" || r.URL.Path == "/metrics" {
 				next.ServeHTTP(w, r)
 				return
 			}
 			start := time.Now()
 			next.ServeHTTP(w, r)
-			logger.Info(
+			logger.InfoContext(r.Context(),
 				"request completed",
 				"method", r.Method,
 				"path", r.URL.Path,

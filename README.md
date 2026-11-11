@@ -197,3 +197,16 @@ docker exec perfiles-service wget -qO- http://127.0.0.1:8080/health
 
 `/health` responde el mismo envelope que el resto del ecosistema:
 `{"success": true, "message": "Servicio disponible", "data": {"status": "UP"}}`.
+
+## Observabilidad (Reto 8)
+
+Instrumentación de `perfiles-service` para el stack de observabilidad del ecosistema (Prometheus,
+Loki, Zipkin y Grafana). Arquitectura, dashboard, alertas y pruebas de caos en el
+[README de infraestructura](https://github.com/Microservicios-RHM/rhm-database-infrastructure#observabilidad-y-monitoreo-reto-8).
+
+| Pilar | Implementación |
+|---|---|
+| Métricas | `prometheus/client_golang` — `GET /metrics`, con los collectors de proceso y de Go ([metrics.go](internal/infrastructure/observability/metrics.go)). Métricas comunes a los 7 servicios: `http_requests_total{method,route,status}`, `http_request_duration_seconds{method,route,status}`, `process_cpu_seconds_total`, `process_resident_memory_bytes`. |
+| Health | `GET /health` verifica PostgreSQL (`pool.Ping`) y la conexión a RabbitMQ. Formato `{"status":"UP","service":"perfiles-service","checks":{...}}`, 200 si todo está UP y 503 si algo está DOWN. |
+| Trazas | `go.opentelemetry.io/otel` + `otelhttp` + `exporters/zipkin` ([tracing.go](internal/infrastructure/observability/tracing.go)). No hay instrumentación oficial para `amqp091-go`: el consumidor extrae el `traceparent` de `delivery.Headers` a mano. Exporta a `OTEL_EXPORTER_ZIPKIN_ENDPOINT` con propagación W3C Trace Context; sin esa variable el tracing queda desactivado. |
+| Logs | `log/slog` JSON con un handler que agrega `traceId`/`spanId` del `context.Context` (por eso los logs de negocio usan `InfoContext`). |
